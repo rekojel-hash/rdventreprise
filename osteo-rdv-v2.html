@@ -1,0 +1,1035 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OstéoSoin v2.0 — Prise de RDV</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+  :root {
+    --sand: #f5f0e8;
+    --sand-dark: #e8e0d0;
+    --sage: #7a9e87;
+    --sage-dark: #5a7d67;
+    --sage-light: #c2d9c9;
+    --clay: #b87c5a;
+    --ink: #2a2420;
+    --ink-soft: #5a4f48;
+    --white: #fdfcfa;
+    --border: rgba(90,79,72,0.15);
+    --warn: #e8a24a;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'DM Sans', sans-serif; background: var(--sand); color: var(--ink); min-height: 100vh; }
+  .view { display: none; min-height: 100vh; }
+  .view.active { display: block; }
+
+  /* HEADER */
+  .app-header {
+    background: var(--white); border-bottom: 1px solid var(--border);
+    padding: 18px 24px; display: flex; align-items: center; justify-content: space-between;
+    position: sticky; top: 0; z-index: 100;
+  }
+  .logo { display: flex; align-items: center; gap: 10px; }
+  .logo-icon { width: 36px; height: 36px; background: var(--sage); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+  .logo-text { font-family: 'Cormorant Garamond', serif; font-size: 1.25rem; font-weight: 600; }
+  .logo-text span { color: var(--sage-dark); font-style: italic; }
+  .v2-badge { background: var(--clay); color: white; font-size: 0.62rem; padding: 2px 7px; border-radius: 10px; vertical-align: middle; margin-left: 4px; }
+  .admin-btn { font-family: 'DM Sans',sans-serif; font-size: 0.75rem; color: var(--ink-soft); background: none; border: 1px solid var(--border); border-radius: 20px; padding: 6px 14px; cursor: pointer; transition: all .2s; letter-spacing: .05em; text-transform: uppercase; }
+  .admin-btn:hover { background: var(--sand-dark); }
+
+  /* HERO */
+  .booking-hero { background: linear-gradient(135deg, var(--sage-dark) 0%, var(--sage) 60%, #a8c5b0 100%); color: white; padding: 52px 24px 40px; text-align: center; position: relative; overflow: hidden; }
+  .booking-hero::before { content:''; position:absolute;inset:0; background:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none'%3E%3Cg fill='%23ffffff' fill-opacity='0.04'%3E%3Ccircle cx='30' cy='30' r='20'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E"); }
+  .hero-tag { display:inline-block; background:rgba(255,255,255,.2); backdrop-filter:blur(4px); border:1px solid rgba(255,255,255,.3); border-radius:20px; padding:4px 14px; font-size:.75rem; letter-spacing:.1em; text-transform:uppercase; margin-bottom:14px; }
+  .hero-title { font-family:'Cormorant Garamond',serif; font-size:2.4rem; font-weight:300; line-height:1.2; margin-bottom:8px; }
+  .hero-title em { font-style:italic; }
+  .hero-sub { font-size:.9rem; opacity:.85; font-weight:300; }
+
+  /* STEPS */
+  .steps-bar { display:flex; background:var(--white); border-bottom:1px solid var(--border); padding:0 8px; }
+  .step-item { flex:1; padding:14px 8px; text-align:center; font-size:.72rem; letter-spacing:.05em; text-transform:uppercase; color:var(--ink-soft); opacity:.4; border-bottom:2px solid transparent; transition:all .3s; }
+  .step-item.active { opacity:1; color:var(--sage-dark); border-color:var(--sage); }
+  .step-item.done { opacity:.7; color:var(--sage-dark); }
+
+  /* PROGRESS */
+  .progress-bar { height:2px; background:var(--sage-light); overflow:hidden; }
+  .progress-fill { height:100%; background:var(--sage); transition:width .4s ease; }
+
+  /* CONTENT */
+  .content-wrap { max-width:520px; margin:0 auto; padding:24px 16px 80px; }
+  .section-label { font-size:.7rem; letter-spacing:.12em; text-transform:uppercase; color:var(--ink-soft); margin-bottom:12px; opacity:.7; }
+
+  /* DATE */
+  .date-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:8px; margin-bottom:28px; }
+  .date-chip { background:var(--white); border:1.5px solid var(--border); border-radius:10px; padding:10px 6px; text-align:center; cursor:pointer; transition:all .2s; }
+  .date-chip:hover { border-color:var(--sage); }
+  .date-chip.selected { background:var(--sage); border-color:var(--sage); color:white; }
+  .date-chip.disabled { opacity:.3; cursor:not-allowed; }
+  .date-chip .day-name { font-size:.62rem; text-transform:uppercase; letter-spacing:.06em; opacity:.7; }
+  .date-chip .day-num { font-family:'Cormorant Garamond',serif; font-size:1.4rem; font-weight:600; line-height:1; }
+  .date-chip .month { font-size:.6rem; opacity:.6; }
+
+  /* SLOTS */
+  .slots-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:28px; }
+  .slot-chip { background:var(--white); border:1.5px solid var(--border); border-radius:8px; padding:12px 8px; text-align:center; cursor:pointer; font-size:.9rem; font-weight:500; transition:all .2s; }
+  .slot-chip:hover { border-color:var(--sage); color:var(--sage-dark); }
+  .slot-chip.selected { background:var(--sage); border-color:var(--sage); color:white; }
+  .slot-chip.booked { background:var(--sand-dark); opacity:.45; cursor:not-allowed; text-decoration:line-through; font-size:.8rem; }
+  .slot-duration { font-size:.65rem; opacity:.7; display:block; margin-top:2px; }
+
+  /* FORM */
+  .form-group { margin-bottom:16px; }
+  .form-label { display:block; font-size:.75rem; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-soft); margin-bottom:6px; opacity:.8; }
+  .form-input,.form-textarea { width:100%; background:var(--white); border:1.5px solid var(--border); border-radius:8px; padding:12px 14px; font-family:'DM Sans',sans-serif; font-size:.9rem; color:var(--ink); outline:none; transition:border-color .2s; -webkit-appearance:none; }
+  .form-input:focus,.form-textarea:focus { border-color:var(--sage); }
+  .form-textarea { resize:vertical; min-height:80px; }
+  .form-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+
+  /* MOTIFS */
+  .motif-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:20px; }
+  .motif-chip { background:var(--white); border:1.5px solid var(--border); border-radius:8px; padding:10px 12px; cursor:pointer; font-size:.82rem; transition:all .2s; display:flex; align-items:center; gap:8px; }
+  .motif-chip:hover { border-color:var(--sage); }
+  .motif-chip.selected { background:var(--sage-light); border-color:var(--sage); color:var(--sage-dark); font-weight:500; }
+  .motif-icon { font-size:1.1rem; }
+
+  /* SUMMARY */
+  .summary-card { background:var(--white); border:1.5px solid var(--border); border-radius:12px; padding:20px; margin-bottom:20px; }
+  .summary-row { display:flex; justify-content:space-between; align-items:flex-start; padding:8px 0; border-bottom:1px solid var(--border); font-size:.88rem; }
+  .summary-row:last-child { border-bottom:none; }
+  .summary-row .key { color:var(--ink-soft); opacity:.7; font-size:.78rem; text-transform:uppercase; letter-spacing:.05em; }
+  .summary-row .val { font-weight:500; text-align:right; max-width:60%; }
+
+  /* BUTTONS */
+  .btn-primary { width:100%; background:var(--sage-dark); color:white; border:none; border-radius:10px; padding:16px; font-family:'DM Sans',sans-serif; font-size:.95rem; font-weight:500; letter-spacing:.02em; cursor:pointer; transition:all .2s; margin-top:8px; }
+  .btn-primary:hover { background:var(--sage); transform:translateY(-1px); box-shadow:0 4px 16px rgba(90,125,103,.3); }
+  .btn-primary:disabled { opacity:.5; cursor:not-allowed; transform:none; }
+  .btn-back { background:none; border:none; color:var(--ink-soft); font-family:'DM Sans',sans-serif; font-size:.85rem; cursor:pointer; padding:4px 0; margin-bottom:20px; display:flex; align-items:center; gap:6px; opacity:.7; }
+  .btn-back:hover { opacity:1; }
+
+  /* SUCCESS */
+  .success-screen { text-align:center; padding:60px 24px; }
+  .success-icon { width:80px; height:80px; background:var(--sage-light); border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 24px; font-size:2.4rem; animation:popIn .5s cubic-bezier(.34,1.56,.64,1); }
+  @keyframes popIn { from{transform:scale(0);opacity:0}to{transform:scale(1);opacity:1} }
+  .success-title { font-family:'Cormorant Garamond',serif; font-size:2rem; font-weight:400; margin-bottom:10px; color:var(--sage-dark); }
+  .success-sub { font-size:.9rem; color:var(--ink-soft); line-height:1.6; max-width:320px; margin:0 auto 28px; }
+  .confirmation-card { background:var(--white); border:1.5px solid var(--sage-light); border-radius:14px; padding:20px; max-width:340px; margin:0 auto; text-align:left; }
+
+  /* ===== ADMIN ===== */
+  #adminView { background:var(--sand); }
+  .admin-header { background:var(--ink); color:white; padding:20px 24px; display:flex; align-items:center; justify-content:space-between; }
+  .admin-title { font-family:'Cormorant Garamond',serif; font-size:1.5rem; font-weight:400; }
+  .admin-title span { font-style:italic; color:var(--sage-light); }
+  .badge-count { background:var(--clay); color:white; border-radius:20px; padding:4px 12px; font-size:.78rem; font-weight:500; }
+  .admin-content { max-width:700px; margin:0 auto; padding:24px 16px; }
+  .admin-stats { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:28px; }
+  .stat-card { background:var(--white); border-radius:10px; padding:16px; border:1px solid var(--border); text-align:center; }
+  .stat-num { font-family:'Cormorant Garamond',serif; font-size:2.2rem; font-weight:600; color:var(--sage-dark); line-height:1; margin-bottom:4px; }
+  .stat-label { font-size:.7rem; text-transform:uppercase; letter-spacing:.06em; color:var(--ink-soft); opacity:.6; }
+  .rdv-list { display:flex; flex-direction:column; gap:10px; }
+  .rdv-card { background:var(--white); border:1px solid var(--border); border-radius:10px; padding:16px; display:grid; grid-template-columns:1fr auto; gap:12px; align-items:start; animation:slideIn .3s ease; }
+  @keyframes slideIn { from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)} }
+  .rdv-card.new { border-left:3px solid var(--clay); }
+  .rdv-name { font-weight:500; font-size:.95rem; margin-bottom:2px; }
+  .rdv-meta { font-size:.8rem; color:var(--ink-soft); opacity:.75; display:flex; gap:12px; flex-wrap:wrap; }
+  .rdv-motif { display:inline-block; background:var(--sage-light); color:var(--sage-dark); border-radius:20px; padding:2px 10px; font-size:.72rem; margin-top:6px; }
+  .rdv-adresse { font-size:.75rem; color:var(--ink-soft); opacity:.65; margin-top:4px; }
+  .rdv-time { text-align:right; font-family:'Cormorant Garamond',serif; font-size:1.2rem; color:var(--sage-dark); white-space:nowrap; }
+  .rdv-date-small { font-size:.72rem; color:var(--ink-soft); opacity:.6; text-align:right; }
+  .new-badge { background:var(--clay); color:white; font-size:.6rem; padding:2px 8px; border-radius:10px; letter-spacing:.06em; text-transform:uppercase; margin-left:8px; vertical-align:middle; }
+  .empty-state { text-align:center; padding:60px 24px; color:var(--ink-soft); opacity:.5; }
+  .empty-state .emoji { font-size:3rem; margin-bottom:12px; }
+
+  /* AI BOX */
+  .ai-summary-box { background:linear-gradient(135deg,#f0f4f1,#e8f0ea); border:1.5px solid var(--sage-light); border-radius:12px; padding:18px; margin-bottom:24px; }
+  .ai-summary-title { font-size:.7rem; text-transform:uppercase; letter-spacing:.1em; color:var(--sage-dark); margin-bottom:10px; display:flex; align-items:center; gap:6px; }
+  .ai-summary-text { font-size:.88rem; color:var(--ink-soft); line-height:1.6; font-style:italic; }
+  .ai-spinner { display:inline-block; animation:spin 1s linear infinite; }
+  @keyframes spin { to{transform:rotate(360deg)} }
+
+  /* FILTER */
+  .filter-bar { display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap; }
+  .filter-btn { background:var(--white); border:1px solid var(--border); border-radius:20px; padding:6px 14px; font-size:.78rem; cursor:pointer; transition:all .2s; font-family:'DM Sans',sans-serif; }
+  .filter-btn.active { background:var(--sage); color:white; border-color:var(--sage); }
+
+  /* PIN */
+  .admin-login { max-width:340px; margin:80px auto; background:var(--white); border:1px solid var(--border); border-radius:14px; padding:32px; text-align:center; }
+  .admin-login h2 { font-family:'Cormorant Garamond',serif; font-size:1.6rem; margin-bottom:6px; }
+  .admin-login p { font-size:.85rem; color:var(--ink-soft); margin-bottom:24px; opacity:.7; }
+  .pin-display { display:flex; gap:8px; justify-content:center; margin-bottom:20px; }
+  .pin-dot { width:14px; height:14px; border-radius:50%; border:2px solid var(--sage); transition:background .15s; }
+  .pin-dot.filled { background:var(--sage); }
+  .pin-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; max-width:200px; margin:0 auto; }
+  .pin-key { background:var(--sand); border:1px solid var(--border); border-radius:10px; padding:14px; font-size:1.2rem; font-weight:500; cursor:pointer; transition:all .15s; font-family:'Cormorant Garamond',serif; color:var(--ink); }
+  .pin-key:hover { background:var(--sage-light); }
+  .pin-key:active { transform:scale(.95); }
+  .pin-error { color:var(--clay); font-size:.8rem; margin-top:12px; min-height:20px; }
+
+  /* CONFIG PANEL */
+  .config-panel { background:var(--white); border:1.5px solid var(--border); border-radius:12px; padding:20px; margin-bottom:24px; }
+  .config-title { font-size:.75rem; text-transform:uppercase; letter-spacing:.1em; color:var(--ink-soft); margin-bottom:14px; opacity:.7; display:flex; align-items:center; gap:8px; }
+  .config-row { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px; }
+  .config-input { width:100%; background:var(--sand); border:1.5px solid var(--border); border-radius:8px; padding:10px 12px; font-family:'DM Sans',sans-serif; font-size:.82rem; color:var(--ink); outline:none; }
+  .config-input:focus { border-color:var(--sage); }
+  .config-input.mono { font-family:monospace; font-size:.78rem; }
+  .config-save { background:var(--sage-dark); color:white; border:none; border-radius:8px; padding:10px 20px; font-family:'DM Sans',sans-serif; font-size:.82rem; cursor:pointer; transition:all .2s; }
+  .config-save:hover { background:var(--sage); }
+  .status-dot { width:8px; height:8px; border-radius:50%; display:inline-block; margin-right:6px; }
+  .status-dot.ok { background:#5a9e6f; }
+  .status-dot.nok { background:#c0392b; }
+  .status-dot.warn { background:var(--warn); }
+
+  /* QR SECTION */
+  .qr-section { background:var(--white); border:1.5px solid var(--border); border-radius:12px; padding:20px; margin-bottom:24px; text-align:center; }
+  .qr-title { font-size:.75rem; text-transform:uppercase; letter-spacing:.1em; color:var(--ink-soft); margin-bottom:14px; opacity:.7; }
+  #qrcode { display:flex; justify-content:center; margin-bottom:12px; }
+  #qrcode canvas, #qrcode img { border-radius:8px; border:4px solid var(--sand); }
+  .qr-url { font-size:.72rem; color:var(--ink-soft); opacity:.6; word-break:break-all; margin-bottom:10px; }
+  .qr-btns { display:flex; gap:8px; justify-content:center; flex-wrap:wrap; }
+  .qr-btn { background:var(--sage-light); color:var(--sage-dark); border:none; border-radius:8px; padding:8px 16px; font-size:.78rem; cursor:pointer; font-family:'DM Sans',sans-serif; transition:all .2s; }
+  .qr-btn:hover { background:var(--sage); color:white; }
+
+  /* NOTIF LOG */
+  .notif-log { background:var(--white); border:1px solid var(--border); border-radius:10px; padding:16px; margin-bottom:24px; }
+  .notif-log-title { font-size:.7rem; text-transform:uppercase; letter-spacing:.1em; opacity:.6; margin-bottom:10px; }
+  .notif-item { display:flex; align-items:center; gap:8px; padding:6px 0; border-bottom:1px solid var(--border); font-size:.8rem; }
+  .notif-item:last-child { border:none; }
+  .notif-time { font-size:.7rem; color:var(--ink-soft); opacity:.5; white-space:nowrap; }
+
+  /* TOAST */
+  .toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(80px); background:var(--ink); color:white; padding:12px 22px; border-radius:30px; font-size:.85rem; z-index:999; transition:transform .3s cubic-bezier(.34,1.56,.64,1); white-space:nowrap; }
+  .toast.show { transform:translateX(-50%) translateY(0); }
+
+  /* TABS */
+  .admin-tabs { display:flex; border-bottom:1px solid var(--border); margin-bottom:20px; background:var(--white); border-radius:10px 10px 0 0; overflow:hidden; flex-wrap:wrap; }
+  .admin-tab { flex:1; padding:11px 6px; text-align:center; font-size:.7rem; cursor:pointer; text-transform:uppercase; letter-spacing:.04em; border-bottom:2px solid transparent; transition:all .2s; color:var(--ink-soft); opacity:.5; white-space:nowrap; }
+  .admin-tab.active { opacity:1; color:var(--sage-dark); border-color:var(--sage); background:var(--sand); }
+  .tab-content { display:none; }
+  .tab-content.active { display:block; }
+
+  /* ABSENCES */
+  .absence-section { background:var(--white); border:1.5px solid var(--border); border-radius:12px; padding:20px; margin-bottom:18px; }
+  .absence-section-title { font-size:.78rem; font-weight:500; text-transform:uppercase; letter-spacing:.08em; color:var(--ink-soft); margin-bottom:14px; display:flex; align-items:center; gap:8px; }
+  .abs-form-row { display:grid; grid-template-columns:1fr 1fr auto; gap:10px; align-items:end; margin-bottom:10px; }
+  .abs-input { width:100%; background:var(--sand); border:1.5px solid var(--border); border-radius:8px; padding:10px 12px; font-family:'DM Sans',sans-serif; font-size:.85rem; color:var(--ink); outline:none; transition:border-color .2s; }
+  .abs-input:focus { border-color:var(--clay); }
+  .abs-label { font-size:.7rem; text-transform:uppercase; letter-spacing:.06em; color:var(--ink-soft); margin-bottom:5px; opacity:.7; display:block; }
+  .abs-btn-add { background:var(--clay); color:white; border:none; border-radius:8px; padding:10px 16px; font-family:'DM Sans',sans-serif; font-size:.82rem; cursor:pointer; transition:all .2s; white-space:nowrap; height:42px; }
+  .abs-btn-add:hover { filter:brightness(1.1); }
+  .absence-list { display:flex; flex-direction:column; gap:8px; }
+  .absence-card { display:flex; align-items:center; gap:12px; background:var(--sand); border:1px solid var(--border); border-radius:8px; padding:12px 14px; }
+  .absence-card.full-day { border-left:3px solid var(--clay); }
+  .absence-card.slot-block { border-left:3px solid var(--warn); }
+  .abs-card-icon { font-size:1.3rem; flex-shrink:0; }
+  .abs-card-info { flex:1; }
+  .abs-card-title { font-size:.88rem; font-weight:500; }
+  .abs-card-sub { font-size:.75rem; color:var(--ink-soft); opacity:.7; margin-top:2px; }
+  .abs-badge { display:inline-block; font-size:.62rem; padding:2px 8px; border-radius:10px; text-transform:uppercase; letter-spacing:.05em; margin-left:6px; vertical-align:middle; }
+  .abs-badge.full { background:#fde8dc; color:var(--clay); }
+  .abs-badge.slot { background:#fef3e0; color:#b07020; }
+  .abs-delete { background:none; border:none; color:var(--ink-soft); opacity:.4; cursor:pointer; font-size:1.1rem; padding:4px; transition:opacity .2s; flex-shrink:0; }
+  .abs-delete:hover { opacity:1; color:#c0392b; }
+  .abs-empty { text-align:center; padding:28px; color:var(--ink-soft); opacity:.4; font-size:.85rem; }
+  .abs-slots-check { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin-top:10px; }
+  .abs-slot-check { display:flex; align-items:center; gap:6px; font-size:.8rem; cursor:pointer; padding:6px 8px; background:var(--sand); border:1.5px solid var(--border); border-radius:7px; transition:all .2s; }
+  .abs-slot-check input { accent-color:var(--clay); cursor:pointer; }
+  .abs-slot-check:has(input:checked) { background:#fde8dc; border-color:var(--clay); }
+  .abs-separator { height:1px; background:var(--border); margin:16px 0; }
+  .abs-tip { background:linear-gradient(135deg,#fef6f0,#fde8dc30); border:1px solid #f5d5c0; border-radius:8px; padding:10px 14px; font-size:.78rem; color:#8a4020; line-height:1.5; margin-bottom:14px; }
+  .date-chip.absent { background:#fde8dc; border-color:var(--clay); color:var(--clay); opacity:.7; cursor:not-allowed; position:relative; }
+  .date-chip.absent::after { content:'✕'; position:absolute; top:2px; right:4px; font-size:.55rem; opacity:.7; }
+</style>
+</head>
+<body>
+
+<!-- ===== BOOKING VIEW ===== -->
+<div class="view active" id="bookingView">
+  <header class="app-header">
+    <div class="logo">
+      <div class="logo-icon">🌿</div>
+      <div class="logo-text">Ostéo<span>soin</span> <span class="v2-badge">v2</span></div>
+    </div>
+    <button class="admin-btn" onclick="showAdminLogin()">Espace praticien</button>
+  </header>
+
+  <div class="booking-hero">
+    <div class="hero-tag">Consultation en entreprise</div>
+    <h1 class="hero-title">Prenez soin<br><em>de votre corps</em></h1>
+    <p class="hero-sub">Séances d'ostéopathie sur votre lieu de travail · 1 heure</p>
+  </div>
+
+  <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:25%"></div></div>
+  <div class="steps-bar">
+    <div class="step-item active" id="step1bar">1 · Date</div>
+    <div class="step-item" id="step2bar">2 · Horaire</div>
+    <div class="step-item" id="step3bar">3 · Infos</div>
+    <div class="step-item" id="step4bar">4 · Confirm.</div>
+  </div>
+
+  <div class="content-wrap">
+    <!-- STEP 1 -->
+    <div id="step1">
+      <p class="section-label">Choisissez une date</p>
+      <div class="date-grid" id="dateGrid"></div>
+    </div>
+
+    <!-- STEP 2 -->
+    <div id="step2" style="display:none">
+      <button class="btn-back" onclick="goStep(1)">← Retour</button>
+      <p class="section-label">Créneaux disponibles — <span id="selectedDateLabel"></span></p>
+      <div class="slots-grid" id="slotsGrid"></div>
+    </div>
+
+    <!-- STEP 3 -->
+    <div id="step3" style="display:none">
+      <button class="btn-back" onclick="goStep(2)">← Retour</button>
+      <p class="section-label">Motif de consultation</p>
+      <div class="motif-grid">
+        <div class="motif-chip" onclick="selectMotif(this,'Douleurs dorsales')"><span class="motif-icon">🔙</span>Douleurs dorsales</div>
+        <div class="motif-chip" onclick="selectMotif(this,'Cervicalgies')"><span class="motif-icon">🧠</span>Cervicalgies</div>
+        <div class="motif-chip" onclick="selectMotif(this,'Stress / fatigue')"><span class="motif-icon">🌀</span>Stress / fatigue</div>
+        <div class="motif-chip" onclick="selectMotif(this,'Maux de tête')"><span class="motif-icon">💆</span>Maux de tête</div>
+        <div class="motif-chip" onclick="selectMotif(this,'Troubles digestifs')"><span class="motif-icon">🌿</span>Troubles digestifs</div>
+        <div class="motif-chip" onclick="selectMotif(this,'Autre / bilan')"><span class="motif-icon">✳️</span>Autre / bilan</div>
+      </div>
+      <p class="section-label" style="margin-top:4px">Vos coordonnées</p>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Prénom</label><input class="form-input" type="text" id="fPrenom" placeholder="Marie" oninput="checkForm()"></div>
+        <div class="form-group"><label class="form-label">Nom</label><input class="form-input" type="text" id="fNom" placeholder="Dupont" oninput="checkForm()"></div>
+      </div>
+      <div class="form-group"><label class="form-label">Email professionnel</label><input class="form-input" type="email" id="fEmail" placeholder="m.dupont@entreprise.fr" oninput="checkForm()"></div>
+      <div class="form-group"><label class="form-label">Téléphone</label><input class="form-input" type="tel" id="fTel" placeholder="06 12 34 56 78" oninput="checkForm()"></div>
+      <div class="form-group"><label class="form-label">Adresse postale</label><input class="form-input" type="text" id="fAdresse" placeholder="12 rue des Acacias, 75001 Paris" oninput="checkForm()"></div>
+      <div class="form-group"><label class="form-label">Note (optionnel)</label><textarea class="form-textarea" id="fNote" placeholder="Précisions sur votre motif..."></textarea></div>
+      <button class="btn-primary" id="btnStep3" onclick="goStep(4)" disabled>Vérifier mon rendez-vous →</button>
+    </div>
+
+    <!-- STEP 4 -->
+    <div id="step4" style="display:none">
+      <button class="btn-back" onclick="goStep(3)">← Retour</button>
+      <p class="section-label">Récapitulatif</p>
+      <div class="summary-card">
+        <div class="summary-row"><span class="key">Date</span><span class="val" id="recapDate">—</span></div>
+        <div class="summary-row"><span class="key">Horaire</span><span class="val" id="recapTime">—</span></div>
+        <div class="summary-row"><span class="key">Motif</span><span class="val" id="recapMotif">—</span></div>
+        <div class="summary-row"><span class="key">Patient</span><span class="val" id="recapNom">—</span></div>
+        <div class="summary-row"><span class="key">Email</span><span class="val" id="recapContact">—</span></div>
+        <div class="summary-row"><span class="key">Adresse</span><span class="val" id="recapAdresse">—</span></div>
+      </div>
+      <p style="font-size:.78rem;color:var(--ink-soft);opacity:.6;margin-bottom:16px;text-align:center;">En confirmant, vous acceptez que vos données soient utilisées uniquement pour la gestion de vos consultations.</p>
+      <button class="btn-primary" id="btnConfirm" onclick="confirmBooking()">✓ Confirmer mon rendez-vous</button>
+    </div>
+
+    <!-- SUCCESS -->
+    <div id="stepSuccess" style="display:none">
+      <div class="success-screen">
+        <div class="success-icon">✓</div>
+        <h2 class="success-title">Rendez-vous confirmé !</h2>
+        <p class="success-sub" id="successMsg">Votre séance est enregistrée.</p>
+        <div class="confirmation-card" id="successCard"></div>
+        <br>
+        <button class="btn-primary" style="max-width:280px;margin:0 auto;" onclick="resetBooking()">Prendre un autre RDV</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== ADMIN VIEW ===== -->
+<div class="view" id="adminView">
+  <!-- LOGIN -->
+  <div id="adminLoginWrapper">
+    <header class="app-header">
+      <div class="logo"><div class="logo-icon">🌿</div><div class="logo-text">Ostéo<span>soin</span></div></div>
+      <button class="admin-btn" onclick="showBooking()">← Retour</button>
+    </header>
+    <div class="admin-login">
+      <h2>Espace praticien</h2>
+      <p>Entrez votre code PIN pour accéder au tableau de bord</p>
+      <div class="pin-display" id="pinDisplay">
+        <div class="pin-dot" id="pd0"></div><div class="pin-dot" id="pd1"></div><div class="pin-dot" id="pd2"></div><div class="pin-dot" id="pd3"></div>
+      </div>
+      <div class="pin-grid">
+        <div class="pin-key" onclick="pinKey('1')">1</div><div class="pin-key" onclick="pinKey('2')">2</div><div class="pin-key" onclick="pinKey('3')">3</div>
+        <div class="pin-key" onclick="pinKey('4')">4</div><div class="pin-key" onclick="pinKey('5')">5</div><div class="pin-key" onclick="pinKey('6')">6</div>
+        <div class="pin-key" onclick="pinKey('7')">7</div><div class="pin-key" onclick="pinKey('8')">8</div><div class="pin-key" onclick="pinKey('9')">9</div>
+        <div class="pin-key" onclick="pinKey('del')">⌫</div><div class="pin-key" onclick="pinKey('0')">0</div>
+        <div class="pin-key" onclick="pinKey('ok')" style="background:var(--sage);color:white;">OK</div>
+      </div>
+      <div class="pin-error" id="pinError"></div>
+      <p style="font-size:.72rem;color:var(--ink-soft);opacity:.4;margin-top:16px;">Code démo : 1234</p>
+    </div>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div id="adminDashboard" style="display:none">
+    <header class="admin-header">
+      <div>
+        <div class="admin-title">Tableau de bord <span>praticien</span></div>
+        <div style="font-size:.75rem;opacity:.5;margin-top:2px;" id="connStatus">⚡ Mode démo (données locales)</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;">
+        <span class="badge-count" id="totalBadge">0 RDV</span>
+        <button class="admin-btn" style="border-color:rgba(255,255,255,.2);color:rgba(255,255,255,.7);" onclick="showBooking()">Quitter</button>
+      </div>
+    </header>
+
+    <div class="admin-content">
+      <div class="admin-stats">
+        <div class="stat-card"><div class="stat-num" id="statTotal">0</div><div class="stat-label">Total RDV</div></div>
+        <div class="stat-card"><div class="stat-num" id="statToday">0</div><div class="stat-label">Aujourd'hui</div></div>
+        <div class="stat-card"><div class="stat-num" id="statNew">0</div><div class="stat-label">Nouveaux</div></div>
+      </div>
+
+      <!-- TABS -->
+      <div class="admin-tabs">
+        <div class="admin-tab active" onclick="switchTab('rdvs',this)">📅 RDV</div>
+        <div class="admin-tab" onclick="switchTab('absences',this)">🚫 Absences</div>
+        <div class="admin-tab" onclick="switchTab('config',this)">⚙️ Config</div>
+        <div class="admin-tab" onclick="switchTab('qr',this)">📲 QR</div>
+      </div>
+
+      <!-- TAB: ABSENCES -->
+      <div class="tab-content" id="tabAbsences">
+        <div class="abs-tip">💡 Les absences bloquent les créneaux côté patient : les journées entières apparaissent grisées dans le calendrier, les créneaux bloqués apparaissent indisponibles à la réservation.</div>
+
+        <!-- SECTION 1: journées entières -->
+        <div class="absence-section">
+          <div class="absence-section-title"><span class="icon">📆</span> Journées entières indisponibles</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:10px;align-items:end;margin-bottom:12px;">
+            <div>
+              <label class="abs-label">Date de début</label>
+              <input class="abs-input" type="date" id="absDateStart">
+            </div>
+            <div>
+              <label class="abs-label">Date de fin <span style="opacity:.5">(même jour si identique)</span></label>
+              <input class="abs-input" type="date" id="absDateEnd">
+            </div>
+            <div>
+              <label class="abs-label">Motif (optionnel)</label>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr auto;gap:10px;align-items:end;margin-bottom:12px;">
+            <input class="abs-input" type="text" id="absReason" placeholder="Ex : Congé, déplacement, formation…">
+            <button class="abs-btn-add" onclick="addFullDayAbsence()">+ Bloquer</button>
+          </div>
+          <div class="absence-list" id="absFullList">
+            <div class="abs-empty">Aucune journée bloquée</div>
+          </div>
+        </div>
+
+        <!-- SECTION 2: créneaux précis -->
+        <div class="absence-section">
+          <div class="absence-section-title"><span class="icon">🕐</span> Créneaux précis à bloquer</div>
+          <div style="display:grid;grid-template-columns:1fr auto;gap:10px;align-items:end;margin-bottom:12px;">
+            <div>
+              <label class="abs-label">Choisir la date</label>
+              <input class="abs-input" type="date" id="absSlotDate" oninput="renderSlotPicker()">
+            </div>
+            <button class="abs-btn-add" onclick="addSlotAbsences()">+ Bloquer les créneaux cochés</button>
+          </div>
+          <div id="slotPickerWrap" style="display:none">
+            <label class="abs-label">Sélectionnez les créneaux à bloquer</label>
+            <div class="abs-slots-check" id="slotPicker"></div>
+          </div>
+          <div class="abs-separator"></div>
+          <div class="absence-list" id="absSlotList">
+            <div class="abs-empty">Aucun créneau spécifique bloqué</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB: RDVs -->
+      <div class="tab-content active" id="tabRdvs">
+        <div class="ai-summary-box">
+          <div class="ai-summary-title">🤖 Résumé intelligent <span class="ai-spinner" id="aiSpinner">⏳</span></div>
+          <div class="ai-summary-text" id="aiText">Génération du résumé en cours...</div>
+        </div>
+        <div class="filter-bar">
+          <button class="filter-btn active" onclick="filterRdv('all',this)">Tous</button>
+          <button class="filter-btn" onclick="filterRdv('today',this)">Aujourd'hui</button>
+          <button class="filter-btn" onclick="filterRdv('new',this)">Nouveaux</button>
+        </div>
+        <div class="rdv-list" id="rdvList"><div class="empty-state"><div class="emoji">📅</div><p>Aucune réservation.</p></div></div>
+      </div>
+
+      <!-- TAB: CONFIG -->
+      <div class="tab-content" id="tabConfig">
+        <div class="config-panel">
+          <div class="config-title">🗄️ Supabase — Base de données
+            <span><span class="status-dot warn" id="dotSupa"></span><span id="labelSupa">Non configuré</span></span>
+          </div>
+          <p style="font-size:.78rem;color:var(--ink-soft);opacity:.7;margin-bottom:12px;">Créez un projet gratuit sur <strong>supabase.com</strong>, puis copiez l'URL et la clé anon ci-dessous. Les RDV seront stockés en base et persistent entre sessions.</p>
+          <div class="form-group"><label class="form-label">URL du projet Supabase</label><input class="config-input mono" id="supaUrl" placeholder="https://xxxx.supabase.co" oninput="saveConfig()"></div>
+          <div class="form-group"><label class="form-label">Clé anon (public)</label><input class="config-input mono" id="supaKey" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." oninput="saveConfig()"></div>
+          <div style="background:var(--sand);border-radius:8px;padding:12px;font-size:.75rem;color:var(--ink-soft);margin-bottom:12px;line-height:1.6;">
+            <strong>SQL à exécuter dans Supabase → SQL Editor :</strong><br>
+            <code style="font-size:.7rem;opacity:.8;">CREATE TABLE bookings (id uuid DEFAULT gen_random_uuid() PRIMARY KEY, prenom text, nom text, email text, tel text, adresse text, motif text, date text, slot text, note text, created_at timestamptz DEFAULT now());</code>
+          </div>
+          <button class="config-save" onclick="testSupabase()">Tester la connexion</button>
+        </div>
+
+        <div class="config-panel">
+          <div class="config-title">📧 Brevo — Notifications email
+            <span><span class="status-dot warn" id="dotBrevo"></span><span id="labelBrevo">Non configuré</span></span>
+          </div>
+          <p style="font-size:.78rem;color:var(--ink-soft);opacity:.7;margin-bottom:12px;">Créez un compte gratuit sur <strong>brevo.com</strong> (anciennement Sendinblue). Récupérez votre clé API dans Paramètres → Clés API. Vous recevrez un email à chaque nouvelle réservation.</p>
+          <div class="form-group"><label class="form-label">Clé API Brevo</label><input class="config-input mono" id="brevoKey" placeholder="xkeysib-..." oninput="saveConfig()"></div>
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">Votre email (destinataire)</label><input class="config-input" id="brevoTo" placeholder="vous@exemple.fr" oninput="saveConfig()"></div>
+            <div class="form-group"><label class="form-label">Email expéditeur</label><input class="config-input" id="brevoFrom" placeholder="rdv@osteo.fr" oninput="saveConfig()"></div>
+          </div>
+          <button class="config-save" onclick="testBrevo()">Tester l'envoi</button>
+        </div>
+
+        <div class="notif-log">
+          <div class="notif-log-title">Journal des notifications</div>
+          <div id="notifLog"><div style="font-size:.8rem;color:var(--ink-soft);opacity:.5;">Aucune notification envoyée.</div></div>
+        </div>
+      </div>
+
+      <!-- TAB: QR -->
+      <div class="tab-content" id="tabQr">
+        <div class="qr-section">
+          <div class="qr-title">📲 QR Code de réservation</div>
+          <div id="qrcode"></div>
+          <div class="qr-url" id="qrUrlLabel"></div>
+          <p style="font-size:.78rem;color:var(--ink-soft);opacity:.7;margin-bottom:14px;">Imprimez ce QR code et affichez-le dans vos locaux. Vos collègues le scannent et arrivent directement sur la page de prise de RDV.</p>
+          <div class="qr-btns">
+            <button class="qr-btn" onclick="downloadQR()">⬇️ Télécharger PNG</button>
+            <button class="qr-btn" onclick="copyQrUrl()">📋 Copier l'URL</button>
+            <button class="qr-btn" onclick="printQR()">🖨️ Imprimer</button>
+          </div>
+        </div>
+        <div class="config-panel">
+          <div class="config-title">🔗 URL personnalisée</div>
+          <p style="font-size:.78rem;color:var(--ink-soft);opacity:.7;margin-bottom:12px;">Si vous hébergez l'application (Netlify, Vercel…), entrez votre URL personnalisée ici pour que le QR code pointe vers votre vrai site.</p>
+          <div class="form-group"><label class="form-label">URL de l'application</label><input class="config-input" id="customUrl" placeholder="https://osteo-monentreprise.netlify.app" oninput="updateQR()"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ========== STATE ==========
+let selectedDate=null,selectedSlot=null,selectedMotif=null,currentStep=1,currentFilter='all';
+let bookings=[], newBookingsIds=new Set(), pinBuffer='';
+let config={supaUrl:'',supaKey:'',brevoKey:'',brevoTo:'',brevoFrom:'',customUrl:''};
+let notifLog=[];
+let qrInstance=null;
+
+const DAYS=['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
+const MONTHS=['jan','fév','mar','avr','mai','jun','jul','aoû','sep','oct','nov','déc'];
+const BASE_SLOTS=['09:00','10:00','11:00','12:00','14:00','15:00','16:00','17:00'];
+
+// ========== STORAGE ==========
+function saveConfig() {
+  config.supaUrl=document.getElementById('supaUrl')?.value||'';
+  config.supaKey=document.getElementById('supaKey')?.value||'';
+  config.brevoKey=document.getElementById('brevoKey')?.value||'';
+  config.brevoTo=document.getElementById('brevoTo')?.value||'';
+  config.brevoFrom=document.getElementById('brevoFrom')?.value||'';
+  config.customUrl=document.getElementById('customUrl')?.value||'';
+  updateStatusDots();
+}
+
+function loadConfig() {
+  // In production, load from localStorage or env vars
+  ['supaUrl','supaKey','brevoKey','brevoTo','brevoFrom','customUrl'].forEach(k=>{
+    const el=document.getElementById(k);
+    if(el && config[k]) el.value=config[k];
+  });
+  updateStatusDots();
+}
+
+function updateStatusDots() {
+  const s=document.getElementById('dotSupa'),sl=document.getElementById('labelSupa');
+  const b=document.getElementById('dotBrevo'),bl=document.getElementById('labelBrevo');
+  if(s){s.className='status-dot '+(config.supaUrl&&config.supaKey?'ok':'warn');sl.textContent=config.supaUrl?'Configuré':'Non configuré';}
+  if(b){b.className='status-dot '+(config.brevoKey&&config.brevoTo?'ok':'warn');bl.textContent=config.brevoKey?'Configuré':'Non configuré';}
+  const cs=document.getElementById('connStatus');
+  if(cs)cs.textContent=config.supaUrl?'🟢 Supabase connecté':'⚡ Mode démo (données locales)';
+}
+
+// ========== SEED DEMO ==========
+function seedDemoBookings() {
+  const today=new Date();
+  const d1=new Date(today);d1.setDate(d1.getDate()+1);
+  const d2=new Date(today);d2.setDate(d2.getDate()+2);
+  bookings=[
+    {id:'bk0',prenom:'Sophie',nom:'Martin',email:'s.martin@corp.fr',tel:'06 11 22 33 44',adresse:'5 av. Victor Hugo, 75016 Paris',motif:'Cervicalgies',date:formatDate(d1),slot:'10:00',note:'',ts:Date.now()-3600000},
+    {id:'bk1',prenom:'Thomas',nom:'Leclerc',email:'t.leclerc@corp.fr',tel:'06 55 66 77 88',adresse:'12 rue de Rivoli, 75001 Paris',motif:'Douleurs dorsales',date:formatDate(d1),slot:'14:00',note:'Télétravail 3j/sem',ts:Date.now()-1800000},
+    {id:'bk2',prenom:'Julie',nom:'Bernard',email:'j.bernard@corp.fr',tel:'07 12 34 56 78',adresse:'3 pl. du Général de Gaulle, 92100 Boulogne',motif:'Stress / fatigue',date:formatDate(d2),slot:'09:00',note:'',ts:Date.now()-600000},
+  ];
+  newBookingsIds=new Set(['bk2']);
+}
+
+function formatDate(d){return `${DAYS[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]}`;}
+
+// ========== SUPABASE ==========
+async function supaFetch(path,opts={}){
+  if(!config.supaUrl||!config.supaKey)return null;
+  const res=await fetch(config.supaUrl+'/rest/v1/'+path,{
+    headers:{'apikey':config.supaKey,'Authorization':'Bearer '+config.supaKey,'Content-Type':'application/json','Prefer':'return=minimal',...(opts.headers||{})},
+    ...opts
+  });
+  if(!res.ok)return null;
+  return res.status===204?true:res.json();
+}
+
+async function saveBookingToSupabase(b){
+  if(!config.supaUrl||!config.supaKey)return false;
+  const r=await supaFetch('bookings',{method:'POST',body:JSON.stringify({prenom:b.prenom,nom:b.nom,email:b.email,tel:b.tel,adresse:b.adresse,motif:b.motif,date:b.date,slot:b.slot,note:b.note})});
+  return r!==null;
+}
+
+async function loadBookingsFromSupabase(){
+  const data=await supaFetch('bookings?order=created_at.desc&limit=50');
+  if(data&&Array.isArray(data)){
+    bookings=data.map(b=>({...b,ts:new Date(b.created_at).getTime()}));
+    return true;
+  }
+  return false;
+}
+
+async function testSupabase(){
+  saveConfig();
+  const r=await supaFetch('bookings?limit=1',{headers:{'Accept':'application/json'}});
+  if(r!==null){showToast('✅ Supabase connecté !');addNotifLog('✅','Supabase: connexion réussie');}
+  else{showToast('❌ Échec connexion Supabase');addNotifLog('❌','Supabase: erreur de connexion');}
+  updateStatusDots();
+}
+
+// ========== BREVO EMAIL ==========
+async function sendBrevoNotification(booking){
+  if(!config.brevoKey||!config.brevoTo)return false;
+  const html=`<div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px;background:#f5f0e8;border-radius:12px;">
+    <h2 style="color:#5a7d67;font-size:1.4rem;margin-bottom:16px;">🌿 Nouveau rendez-vous</h2>
+    <table style="width:100%;border-collapse:collapse;">
+      <tr><td style="padding:8px 0;color:#888;font-size:.85rem;width:35%">Patient</td><td style="font-weight:500">${booking.prenom} ${booking.nom}</td></tr>
+      <tr><td style="padding:8px 0;color:#888;font-size:.85rem">Date</td><td>${booking.date} à ${booking.slot}</td></tr>
+      <tr><td style="padding:8px 0;color:#888;font-size:.85rem">Motif</td><td>${booking.motif}</td></tr>
+      <tr><td style="padding:8px 0;color:#888;font-size:.85rem">Email</td><td>${booking.email}</td></tr>
+      <tr><td style="padding:8px 0;color:#888;font-size:.85rem">Tél</td><td>${booking.tel}</td></tr>
+      <tr><td style="padding:8px 0;color:#888;font-size:.85rem">Adresse</td><td>${booking.adresse}</td></tr>
+      ${booking.note?`<tr><td style="padding:8px 0;color:#888;font-size:.85rem">Note</td><td><em>${booking.note}</em></td></tr>`:''}
+    </table>
+  </div>`;
+  try{
+    const res=await fetch('https://api.brevo.com/v3/smtp/email',{
+      method:'POST',
+      headers:{'api-key':config.brevoKey,'Content-Type':'application/json'},
+      body:JSON.stringify({sender:{name:'OstéoSoin RDV',email:config.brevoFrom||config.brevoTo},to:[{email:config.brevoTo}],subject:`Nouveau RDV — ${booking.prenom} ${booking.nom} · ${booking.date} ${booking.slot}`,htmlContent:html})
+    });
+    if(res.ok){addNotifLog('📧',`Email envoyé pour ${booking.prenom} ${booking.nom}`);return true;}
+    addNotifLog('❌',`Email échoué (${res.status})`);return false;
+  }catch(e){addNotifLog('❌','Email échoué: '+e.message);return false;}
+}
+
+async function testBrevo(){
+  saveConfig();
+  const r=await sendBrevoNotification({prenom:'Test',nom:'RDV',email:'test@test.fr',tel:'0600000000',adresse:'Paris',motif:'Test',date:'Aujourd\'hui',slot:'12:00',note:'Ceci est un test.'});
+  showToast(r?'✅ Email test envoyé !':'❌ Échec envoi email');
+}
+
+function addNotifLog(icon,msg){
+  notifLog.unshift({icon,msg,time:new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})});
+  const el=document.getElementById('notifLog');
+  if(!el)return;
+  el.innerHTML=notifLog.slice(0,10).map(n=>`<div class="notif-item"><span>${n.icon}</span><span style="flex:1">${n.msg}</span><span class="notif-time">${n.time}</span></div>`).join('');
+}
+
+// ========== DATE & SLOTS ==========
+function buildDateGrid(){
+  const grid=document.getElementById('dateGrid');grid.innerHTML='';
+  const today=new Date();
+  for(let i=1;i<=10;i++){
+    const d=new Date(today);d.setDate(today.getDate()+i);
+    const isW=d.getDay()===0||d.getDay()===6;
+    const dateStr=toISODate(d);
+    const isAbs=isDateFullyAbsent(dateStr);
+    const chip=document.createElement('div');
+    chip.className='date-chip'+(isW?' disabled':'')+(isAbs?' absent':'');
+    chip.innerHTML=`<div class="day-name">${DAYS[d.getDay()]}</div><div class="day-num">${d.getDate()}</div><div class="month">${MONTHS[d.getMonth()]}</div>`;
+    if(!isW&&!isAbs)chip.onclick=()=>selectDate(chip,formatDate(d));
+    grid.appendChild(chip);
+  }
+}
+
+function selectDate(chip,label){
+  document.querySelectorAll('.date-chip').forEach(c=>c.classList.remove('selected'));
+  chip.classList.add('selected');selectedDate=label;setTimeout(()=>goStep(2),200);
+}
+
+function buildSlotsGrid(){
+  const grid=document.getElementById('slotsGrid');
+  document.getElementById('selectedDateLabel').textContent=selectedDate;
+  grid.innerHTML='';
+  const booked=bookings.filter(b=>b.date===selectedDate).map(b=>b.slot);
+  const dateISO=labelToISO(selectedDate);
+  BASE_SLOTS.forEach(slot=>{
+    const isB=booked.includes(slot);
+    const isAbs=isSlotAbsent(dateISO,slot);
+    const chip=document.createElement('div');
+    chip.className='slot-chip'+((isB||isAbs)?' booked':'');
+    if(isAbs&&!isB) chip.innerHTML=`${slot}<span class="slot-duration">Indisponible</span>`;
+    else chip.innerHTML=`${slot}<span class="slot-duration">1 heure</span>`;
+    if(!isB&&!isAbs)chip.onclick=()=>{selectSlot(chip,slot);};
+    grid.appendChild(chip);
+  });
+}
+
+function selectSlot(chip,slot){
+  document.querySelectorAll('.slot-chip').forEach(c=>c.classList.remove('selected'));
+  chip.classList.add('selected');selectedSlot=slot;setTimeout(()=>goStep(3),200);
+}
+
+function selectMotif(chip,motif){
+  document.querySelectorAll('.motif-chip').forEach(c=>c.classList.remove('selected'));
+  chip.classList.add('selected');selectedMotif=motif;checkForm();
+}
+
+function checkForm(){
+  const ok=document.getElementById('fPrenom').value.trim()&&document.getElementById('fNom').value.trim()&&document.getElementById('fEmail').value.trim()&&document.getElementById('fTel').value.trim()&&document.getElementById('fAdresse').value.trim()&&selectedMotif;
+  document.getElementById('btnStep3').disabled=!ok;
+}
+
+function goStep(n){
+  [1,2,3,4].forEach(i=>{
+    document.getElementById('step'+i).style.display='none';
+    const bar=document.getElementById('step'+i+'bar');
+    bar.className='step-item'+(i<n?' done':'')+(i===n?' active':'');
+  });
+  document.getElementById('step'+n).style.display='block';currentStep=n;
+  document.getElementById('progressFill').style.width=(n*25)+'%';
+  if(n===2)buildSlotsGrid();
+  if(n===4)fillRecap();
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+function fillRecap(){
+  document.getElementById('recapDate').textContent=selectedDate;
+  document.getElementById('recapTime').textContent=selectedSlot+' (1 heure)';
+  document.getElementById('recapMotif').textContent=selectedMotif;
+  document.getElementById('recapNom').textContent=document.getElementById('fPrenom').value+' '+document.getElementById('fNom').value;
+  document.getElementById('recapContact').textContent=document.getElementById('fEmail').value;
+  document.getElementById('recapAdresse').textContent=document.getElementById('fAdresse').value;
+}
+
+// ========== CONFIRM ==========
+async function confirmBooking(){
+  const btn=document.getElementById('btnConfirm');
+  btn.disabled=true;btn.textContent='Enregistrement…';
+  const booking={
+    id:'bk'+Date.now(),
+    prenom:document.getElementById('fPrenom').value.trim(),
+    nom:document.getElementById('fNom').value.trim(),
+    email:document.getElementById('fEmail').value.trim(),
+    tel:document.getElementById('fTel').value.trim(),
+    adresse:document.getElementById('fAdresse').value.trim(),
+    motif:selectedMotif,date:selectedDate,slot:selectedSlot,
+    note:document.getElementById('fNote').value.trim(),ts:Date.now()
+  };
+
+  // Save to Supabase if configured
+  let savedOnline=false;
+  if(config.supaUrl&&config.supaKey){
+    btn.textContent='Sauvegarde en base…';
+    savedOnline=await saveBookingToSupabase(booking);
+  }
+
+  // Send email notification
+  let emailSent=false;
+  if(config.brevoKey&&config.brevoTo){
+    btn.textContent='Envoi notification…';
+    emailSent=await sendBrevoNotification(booking);
+  }
+
+  bookings.push(booking);newBookingsIds.add(booking.id);
+
+  // Success
+  [1,2,3,4].forEach(i=>document.getElementById('step'+i).style.display='none');
+  document.getElementById('progressFill').style.width='100%';
+  document.getElementById('stepSuccess').style.display='block';
+  let msg='Votre séance est enregistrée.';
+  if(emailSent)msg+=' Une confirmation vous a été envoyée par email.';
+  document.getElementById('successMsg').textContent=msg;
+  document.getElementById('successCard').innerHTML=`
+    <div class="summary-row"><span class="key">Date</span><span class="val">${booking.date}</span></div>
+    <div class="summary-row"><span class="key">Heure</span><span class="val">${booking.slot} (1h)</span></div>
+    <div class="summary-row"><span class="key">Motif</span><span class="val">${booking.motif}</span></div>
+  `;
+  showToast('🌿 Rendez-vous confirmé !');
+}
+
+function resetBooking(){
+  selectedDate=null;selectedSlot=null;selectedMotif=null;
+  document.getElementById('stepSuccess').style.display='none';
+  ['fPrenom','fNom','fEmail','fTel','fAdresse','fNote'].forEach(id=>document.getElementById(id).value='');
+  document.querySelectorAll('.motif-chip').forEach(c=>c.classList.remove('selected'));
+  selectedMotif=null;buildDateGrid();goStep(1);
+}
+
+// ========== ADMIN ==========
+function showAdminLogin(){
+  document.getElementById('bookingView').classList.remove('active');
+  document.getElementById('adminView').classList.add('active');
+  document.getElementById('adminLoginWrapper').style.display='block';
+  document.getElementById('adminDashboard').style.display='none';
+  pinBuffer='';updatePinDisplay();
+}
+function showBooking(){
+  document.getElementById('adminView').classList.remove('active');
+  document.getElementById('bookingView').classList.add('active');
+}
+
+function pinKey(k){
+  if(k==='del'){pinBuffer=pinBuffer.slice(0,-1);}
+  else if(k==='ok'){checkPin();return;}
+  else if(pinBuffer.length<4){pinBuffer+=k;}
+  updatePinDisplay();
+  if(pinBuffer.length===4)setTimeout(checkPin,150);
+}
+function updatePinDisplay(){for(let i=0;i<4;i++)document.getElementById('pd'+i).classList.toggle('filled',i<pinBuffer.length);}
+
+async function checkPin(){
+  if(pinBuffer==='1234'){
+    document.getElementById('adminLoginWrapper').style.display='none';
+    document.getElementById('adminDashboard').style.display='block';
+    pinBuffer='';
+    loadConfig();
+    if(config.supaUrl&&config.supaKey)await loadBookingsFromSupabase();
+    renderDashboard();generateAiSummary();buildQR();
+  }else{
+    document.getElementById('pinError').textContent='Code incorrect.';
+    pinBuffer='';updatePinDisplay();
+    setTimeout(()=>document.getElementById('pinError').textContent='',2000);
+  }
+}
+
+function switchTab(tab,el){
+  document.querySelectorAll('.admin-tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('tab'+tab.charAt(0).toUpperCase()+tab.slice(1)).classList.add('active');
+  if(tab==='qr')buildQR();
+  if(tab==='absences')renderAbsenceLists();
+}
+
+function renderDashboard(){
+  const today=formatDate(new Date());
+  document.getElementById('statTotal').textContent=bookings.length;
+  document.getElementById('statToday').textContent=bookings.filter(b=>b.date===today).length;
+  document.getElementById('statNew').textContent=newBookingsIds.size;
+  document.getElementById('totalBadge').textContent=bookings.length+' RDV';
+  renderRdvList(currentFilter);
+}
+
+function filterRdv(type,btn){
+  currentFilter=type;
+  document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');renderRdvList(type);
+}
+
+function renderRdvList(filter){
+  const list=document.getElementById('rdvList');
+  const today=formatDate(new Date());
+  let filtered=bookings;
+  if(filter==='today')filtered=bookings.filter(b=>b.date===today);
+  if(filter==='new')filtered=bookings.filter(b=>newBookingsIds.has(b.id));
+  filtered=[...filtered].sort((a,b)=>b.ts-a.ts);
+  if(!filtered.length){list.innerHTML=`<div class="empty-state"><div class="emoji">📭</div><p>Aucune réservation dans ce filtre.</p></div>`;return;}
+  list.innerHTML=filtered.map(b=>`<div class="rdv-card ${newBookingsIds.has(b.id)?'new':''}">
+    <div>
+      <div class="rdv-name">${b.prenom} ${b.nom}${newBookingsIds.has(b.id)?'<span class="new-badge">nouveau</span>':''}</div>
+      <div class="rdv-meta"><span>📧 ${b.email}</span><span>📱 ${b.tel}</span></div>
+      <div class="rdv-adresse">📍 ${b.adresse||'—'}</div>
+      <div class="rdv-motif">${b.motif}</div>
+      ${b.note?`<div style="font-size:.78rem;margin-top:6px;color:var(--ink-soft);opacity:.7;font-style:italic;">"${b.note}"</div>`:''}
+    </div>
+    <div><div class="rdv-time">${b.slot}</div><div class="rdv-date-small">${b.date}</div></div>
+  </div>`).join('');
+}
+
+async function generateAiSummary(){
+  const aiText=document.getElementById('aiText'),aiSpinner=document.getElementById('aiSpinner');
+  if(!bookings.length){aiText.textContent="Aucun rendez-vous pour le moment.";aiSpinner.style.display='none';return;}
+  const summary=bookings.map(b=>`- ${b.prenom} ${b.nom}, ${b.date} à ${b.slot}, motif: ${b.motif}`).join('\n');
+  try{
+    const res=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:200,messages:[{role:"user",content:`Tu es assistant pour une ostéopathe. Voici les prochains RDV :\n${summary}\n\nFais un résumé en 2-3 phrases utiles pour la praticienne (motifs fréquents, répartition des créneaux, points d'attention). Sois concis et professionnel.`}]})});
+    const data=await res.json();
+    aiText.textContent=data.content?.map(c=>c.text||'').join('')||'Résumé indisponible.';
+  }catch(e){
+    aiText.textContent=`${bookings.length} RDV enregistrés. Motifs : ${[...new Set(bookings.map(b=>b.motif))].join(', ')}.`;
+  }
+  aiSpinner.style.display='none';
+}
+
+// ========== QR CODE ==========
+function buildQR(){
+  const container=document.getElementById('qrcode');
+  if(!container)return;
+  container.innerHTML='';
+  const url=config.customUrl||window.location.href.split('#')[0];
+  document.getElementById('qrUrlLabel').textContent=url;
+  try{
+    qrInstance=new QRCode(container,{text:url,width:180,height:180,colorDark:'#2a2420',colorLight:'#fdfcfa',correctLevel:QRCode.CorrectLevel.H});
+  }catch(e){container.innerHTML='<p style="font-size:.8rem;color:var(--ink-soft);">QR Code non disponible dans cet environnement.</p>';}
+}
+
+function updateQR(){saveConfig();buildQR();}
+
+function downloadQR(){
+  const canvas=document.querySelector('#qrcode canvas');
+  if(!canvas){showToast('QR Code non disponible');return;}
+  const a=document.createElement('a');a.download='osteo-qrcode.png';a.href=canvas.toDataURL();a.click();
+}
+
+function copyQrUrl(){
+  const url=config.customUrl||window.location.href;
+  navigator.clipboard?.writeText(url).then(()=>showToast('✅ URL copiée !')).catch(()=>showToast(url));
+}
+
+function printQR(){
+  const canvas=document.querySelector('#qrcode canvas');
+  if(!canvas){showToast('QR Code non disponible');return;}
+  const w=window.open('');
+  w.document.write(`<html><body style="text-align:center;padding:40px;font-family:sans-serif">
+    <h2 style="color:#5a7d67">🌿 OstéoSoin — Prise de RDV</h2>
+    <p style="color:#888;margin-bottom:20px">Scannez ce QR code pour prendre rendez-vous</p>
+    <img src="${canvas.toDataURL()}" style="width:200px">
+    <p style="color:#aaa;font-size:.75rem;margin-top:20px">${config.customUrl||window.location.href}</p>
+  </body></html>`);
+  w.document.close();setTimeout(()=>{w.print();w.close();},500);
+}
+
+// ========== TOAST ==========
+function showToast(msg){
+  const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),3000);
+}
+
+
+// ========== ABSENCES ==========
+// absences = [{id, type:'full'|'slot', dateStart, dateEnd, reason, slots:[]}]
+let absences = [];
+
+function toISODate(d){ return d.toISOString().split('T')[0]; }
+
+function labelToISO(label){
+  // label format: "Lun 9 jan" -> find matching date in next 30 days
+  const today=new Date();
+  for(let i=1;i<=30;i++){
+    const d=new Date(today);d.setDate(today.getDate()+i);
+    if(formatDate(d)===label)return toISODate(d);
+  }
+  return null;
+}
+
+function isDateFullyAbsent(isoDate){
+  return absences.some(a=>{
+    if(a.type!=='full')return false;
+    return isoDate>=a.dateStart && isoDate<=a.dateEnd;
+  });
+}
+
+function isSlotAbsent(isoDate,slot){
+  if(!isoDate)return false;
+  if(isDateFullyAbsent(isoDate))return true;
+  return absences.some(a=>a.type==='slot' && a.dateStart===isoDate && a.slots.includes(slot));
+}
+
+function addFullDayAbsence(){
+  const start=document.getElementById('absDateStart').value;
+  const end=document.getElementById('absDateEnd').value||start;
+  if(!start){showToast('Choisissez une date de début');return;}
+  if(end<start){showToast('La date de fin doit être après le début');return;}
+  absences.push({id:'abs'+Date.now(),type:'full',dateStart:start,dateEnd:end,reason:document.getElementById('absReason').value.trim()||'Indisponible',slots:[]});
+  document.getElementById('absDateStart').value='';
+  document.getElementById('absDateEnd').value='';
+  document.getElementById('absReason').value='';
+  renderAbsenceLists();buildDateGrid();
+  showToast('✅ Journée(s) bloquée(s)');
+}
+
+function renderSlotPicker(){
+  const date=document.getElementById('absSlotDate').value;
+  const wrap=document.getElementById('slotPickerWrap');
+  const picker=document.getElementById('slotPicker');
+  if(!date){wrap.style.display='none';return;}
+  wrap.style.display='block';
+  const blocked=absences.filter(a=>a.type==='slot'&&a.dateStart===date).flatMap(a=>a.slots);
+  picker.innerHTML=BASE_SLOTS.map(s=>`<label class="abs-slot-check"><input type="checkbox" value="${s}" ${blocked.includes(s)?'checked':''}> ${s}</label>`).join('');
+}
+
+function addSlotAbsences(){
+  const date=document.getElementById('absSlotDate').value;
+  if(!date){showToast('Choisissez une date');return;}
+  const checked=[...document.querySelectorAll('#slotPicker input:checked')].map(i=>i.value);
+  if(!checked.length){showToast('Cochez au moins un créneau');return;}
+  // Remove existing slot abs for this date, re-add
+  absences=absences.filter(a=>!(a.type==='slot'&&a.dateStart===date));
+  absences.push({id:'abs'+Date.now(),type:'slot',dateStart:date,dateEnd:date,reason:'Créneaux bloqués',slots:checked});
+  renderAbsenceLists();buildDateGrid();
+  showToast(`✅ ${checked.length} créneau(x) bloqué(s)`);
+}
+
+function deleteAbsence(id){
+  absences=absences.filter(a=>a.id!==id);
+  renderAbsenceLists();buildDateGrid();
+  showToast('🗑 Absence supprimée');
+}
+
+function renderAbsenceLists(){
+  const fullEl=document.getElementById('absFullList');
+  const slotEl=document.getElementById('absSlotList');
+  if(!fullEl||!slotEl)return;
+
+  const fullAbs=absences.filter(a=>a.type==='full');
+  const slotAbs=absences.filter(a=>a.type==='slot');
+
+  if(!fullAbs.length){
+    fullEl.innerHTML='<div class="abs-empty">Aucune journée bloquée</div>';
+  } else {
+    fullEl.innerHTML=fullAbs.map(a=>{
+      const same=a.dateStart===a.dateEnd;
+      const label=same?formatISODate(a.dateStart):`${formatISODate(a.dateStart)} → ${formatISODate(a.dateEnd)}`;
+      return `<div class="absence-card full-day">
+        <div class="abs-card-icon">📆</div>
+        <div class="abs-card-info">
+          <div class="abs-card-title">${label} <span class="abs-badge full">Journée entière</span></div>
+          <div class="abs-card-sub">${a.reason}</div>
+        </div>
+        <button class="abs-delete" onclick="deleteAbsence('${a.id}')" title="Supprimer">✕</button>
+      </div>`;
+    }).join('');
+  }
+
+  if(!slotAbs.length){
+    slotEl.innerHTML='<div class="abs-empty">Aucun créneau spécifique bloqué</div>';
+  } else {
+    slotEl.innerHTML=slotAbs.map(a=>`<div class="absence-card slot-block">
+      <div class="abs-card-icon">🕐</div>
+      <div class="abs-card-info">
+        <div class="abs-card-title">${formatISODate(a.dateStart)} <span class="abs-badge slot">Créneaux</span></div>
+        <div class="abs-card-sub">${a.slots.join(', ')}</div>
+      </div>
+      <button class="abs-delete" onclick="deleteAbsence('${a.id}')" title="Supprimer">✕</button>
+    </div>`).join('');
+  }
+}
+
+function formatISODate(iso){
+  const d=new Date(iso+'T12:00:00');
+  return `${DAYS[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+// ========== INIT ==========
+seedDemoBookings();buildDateGrid();
+</script>
+</body>
+</html>
